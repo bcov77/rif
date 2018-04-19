@@ -436,3 +436,122 @@ output
 
 rif_dock_test will output up to -rif_dock:n_pdb_out pdb files per input scaffold with partial docks with interface-only design to the directory specified by -rif_dock:outdir. Additionally, a file with scores for each dock/design to the file specified by -rif_dock:dokfile, possibly with a suffix to prevent overwrite of a previous file.
 
+
+
+Baker Lab specific stuff
+~~~~~~~~~~~~~~~~~~~~~~
+
+Brian Coventry appologizes that the rest of this document may not be the most useful unless you have access to the bakerlab computer systems. However, if you do not have access to these systems he will happily supply the files you need (bcov@uw.edu).
+
+
+Brian's Stable Builds
+~~~~~~~~~~~~~~~~~~~~~~
+
+In an effort to make the life of everyone who uses Rifdock easier, Brian has a set of stable builds that he promises never to break.
+
+These three paths should always work and are the suggested/bleeding-edge version to use:
+::
+    /home/bcov/rifdock/latest/rifgen
+    /home/bcov/rifdock/latest/rif_dock_test
+    
+    -database /home/bcov/rifdock/lastest/database
+    
+If you would like to link against a specific build (for repeatability for instance), those are available here:
+::
+    /home/bcov/rifdock/st/*/rifdock/build/apps/rosetta/rifgen
+    /home/bcov/rifdock/st/*/rifdock/build/apps/rosetta/
+
+    -database /home/bcov/rifdock/st/*/main/database
+    
+    
+Fragment Insertions
+~~~~~~~~~~~~~~~~~~~~~~
+
+Rifdock has the ability to insert fragments into your scaffold using Alex Ford's fragment insertion tool. One has a choice to either make a single fragment insertion or to make a set of parallel fragment insertions (i.e. each generated scaffold will have exactly one inserted region)
+
+Here is how to specify a single fragment insertion:
+::
+    -low_cut_site 66 
+    -high_cut_site 74 
+    -max_deletion 0 
+    -max_insertion 0 
+    -max_fragments 15 
+    -fragment_cluster_tolerance 0.4 
+    -fragment_max_rmsd 1.3
+
+Specifying multiple fragment insertions is done with the help of a file:
+::
+    # For the situation where you only have one scaffold
+    -morph_rules_files my_morph_rules.txt
+    
+    # If you have multiple scaffolds you may specify multiple files
+    -morph_rules_files my_morph_rules1.txt my_morph_rules2.txt my_morph_rules3.txt
+    
+    # Alternatively, if you have multiple scaffolds and you specify one file, it will be used for all
+    -morph_rules_files my_morph_rules.txt
+
+The format of the morph_rules_files is as follows:
+::
+    # The order is:
+    # S: low_cut_site high_cut_site max_deletion max_insertion max_fragments fragment_cluster_tolerance fragment_max_rmsd
+    S: 66 74 0 0 15 0.4 1.3
+    S: 29 34 0 0 15 0.4 1.3
+    ...
+    
+Fragment insertions have a common set of required flags:
+::
+    # The fragment code relies on Alex Ford's HDF5 vall
+    -indexed_structure_store:fragment_store /home/bcov/from/alex/vall.h5
+    
+    # The following flag is used to enable fragment insertions
+    -scaff_search_mode morph
+    
+Finally, fragment insertions have a common set of optional flags:
+::
+    # Do you want the umodified scaffold to be included too?
+    -include_parent
+    
+    # Massive speedup at the cost of accuracy. Using this flag will use the parent two-body energies for the child scaffolds. This flag is probably worth it, but may result in internal sidechain clashes near the insertion site.
+    -use_parent_body_energies 
+
+    # One has a decision to make with how to treat the fragment inserted structures. Do you want them to compete with each other or to run independent parallel trajectories? 
+    # If you want them to compete: set this False
+    # If you want them to run independent: set this True
+    #   Extra note: If this is True (which is default) n_pdb_out specifies how many structures *per fragment*
+    -filter_scaffolds_separately false
+    
+    
+Frank's Grid Energies
+~~~~~~~~~~~~~~~~~~~~~~
+
+Frank's grid energies have been added to RifDock in order to more accurately score placed residues with the Rosetta score function. Using the grid energies has different effects in RifGen and RifDock. In all cases, it makes the given step run about 10X as slow.
+::
+    # During RifGen, the grid energies will be used to score all hydrogen bonding residues as well as all user hotspot residues. Apolar residues will not be scored with the grid energies.
+    -rifgen:use_rosetta_grid_energies
+    
+    # During RifDock, the grid energies will be used to re-evaluate all residues before the HackPack stage
+    -rif_dock_test:use_rosetta_grid_energies
+    
+    
+    
+Random flags you may find useful
+~~~~~~~~~~~~~~~~~~~~~~
+
+All flags given with their default value. RG is RifGen and RD is RifDock
+::
+    # Anything with a one-body energy less than favorable_1body_cutoff gets multiplied by this (RD)
+    -favorable_1body_multiplier 1.0
+    
+    # Anything with a one-body energy less than this gets multiplied by favorable_1body_multiplier (RD)
+    -favorable_1body_multiplier_cutoff 0.0
+    
+    # Anything with a two-body energy less than 0 gets multiplied by this (RD)
+    -favorable_2body_multiplier 1.0
+    
+    # Do you want to run HackPack during the HSearch? This doesn't seem to help, but you can try (RD)
+    -hack_pack_during_hsearch False
+    
+    # Do you want extra long hydrogen bonds to be counted? If so, they can be up to this amount longer (RD RG)
+    -long_hbond_fudge_distance 0.0
+    
+    
